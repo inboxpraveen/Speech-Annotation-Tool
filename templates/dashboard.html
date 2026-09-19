@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Projects - Speech Annotation Tool{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-0">Projects</h4>
+    <div class="text-secondary small">Each project tracks one audio folder, including its subfolders.</div>
+  </div>
+  <button class="btn btn-primary" id="newProjectBtn"><i class="bi bi-plus-lg"></i> New project</button>
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-9">
+    <div class="row g-3" id="projectGrid">
+      <div class="col-12 text-secondary">Loading...</div>
+    </div>
+  </div>
+  <div class="col-xl-3">
+    <div class="card mb-3">
+      <div class="card-header bg-white"><i class="bi bi-people"></i> Online now</div>
+      <ul class="list-group list-group-flush" id="onlineList"><li class="list-group-item text-secondary small">Nobody yet</li></ul>
+    </div>
+    <div class="card mb-3">
+      <div class="card-header bg-white"><i class="bi bi-activity"></i> Active jobs</div>
+      <ul class="list-group list-group-flush" id="activeJobs"><li class="list-group-item text-secondary small">No active jobs</li></ul>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="projectModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="projectModalTitle">New project</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Project name</label>
+            <input type="text" class="form-control" id="pName" placeholder="Hindi call recordings, batch 3">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Audio folder</label>
+            <div class="input-group">
+              <input type="text" class="form-control font-monospace" id="pRoot" placeholder="C:\audio\batch3 or /audio/batch3">
+              <button class="btn btn-outline-secondary" id="pBrowse" type="button"><i class="bi bi-folder2-open"></i> Browse</button>
+            </div>
+            <div class="help">Subfolders are included. Only audio files are tracked; everything else is ignored.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Engine</label>
+            <select class="form-select" id="pEngine"></select>
+            <div class="help" id="pEngineHelp"></div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Model</label>
+            <select class="form-select" id="pModel"></select>
+            <input type="text" class="form-control mt-1 d-none" id="pModelCustom">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Language</label>
+            <input type="text" class="form-control" id="pLanguage" placeholder="blank = auto detect">
+            <div class="help" id="pLanguageHelp"></div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Chunking</label>
+            <select class="form-select" id="pChunkMode">
+              <option value="silence" selected>Split at silences</option>
+              <option value="none">None (one record per file)</option>
+              <option value="fixed">Fixed length windows</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Target chunk seconds</label>
+            <input type="number" class="form-control" id="pChunkSeconds" min="1" step="1" value="20">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Rescan folder every (minutes)</label>
+            <input type="number" class="form-control" id="pWatch" min="0" step="1" value="0">
+            <div class="help">0 = only when you press Scan. Detects new, changed and removed files.</div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-check mt-4">
+              <input class="form-check-input" type="checkbox" id="pAuto">
+              <label class="form-check-label" for="pAuto">Transcribe new files automatically</label>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="form-check mt-4">
+              <input class="form-check-input" type="checkbox" id="pTranscribeNow" checked>
+              <label class="form-check-label" for="pTranscribeNow">Start transcribing right after the first scan</label>
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Notes</label>
+            <input type="text" class="form-control" id="pDescription" placeholder="optional">
+          </div>
+        </div>
+        <div class="alert alert-danger mt-3 d-none" id="pError"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="pSave">Create and scan</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>window.ENGINES = {{ engines | tojson }};</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

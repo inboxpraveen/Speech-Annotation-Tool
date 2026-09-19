@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} - Speech Annotation Tool{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <div class="small"><a href="/" class="text-decoration-none">Projects</a> / <span id="hName">{{ project.name }}</span></div>
+    <h4 class="mb-1" id="hTitle">{{ project.name }}</h4>
+    <div class="small text-secondary font-monospace" id="hRoot">{{ project.root_path }}</div>
+    <div class="small text-secondary mt-1" id="hEngine"></div>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <button class="btn btn-outline-secondary" id="btnScan" title="Look for new, changed and removed files"><i class="bi bi-arrow-repeat"></i> Scan folder</button>
+    <button class="btn btn-primary" id="btnTranscribe"><i class="bi bi-play-fill"></i> Transcribe pending</button>
+    <button class="btn btn-outline-warning" id="btnRetry"><i class="bi bi-arrow-counterclockwise"></i> Retry failed</button>
+    <div class="btn-group">
+      <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i> More</button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="#" id="btnImport"><i class="bi bi-upload"></i> Import data</a></li>
+        <li><a class="dropdown-item" href="#" id="btnExport"><i class="bi bi-download"></i> Export dataset</a></li>
+        <li><a class="dropdown-item" href="#" id="btnFiles"><i class="bi bi-file-earmark-music"></i> Files</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#" id="btnSettings"><i class="bi bi-gear"></i> Project settings</a></li>
+        <li><a class="dropdown-item text-danger" href="#" id="btnDelete"><i class="bi bi-trash"></i> Delete project</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <div class="d-flex flex-wrap align-items-center gap-4" id="statsRow"></div>
+    <div id="jobPanel" class="mt-2 d-none">
+      <div class="d-flex align-items-center gap-2 small">
+        <span class="spinner-border spinner-border-sm text-primary" id="jobSpinner"></span>
+        <strong id="jobTitle"></strong><span id="jobMessage" class="text-secondary"></span>
+        <span class="ms-auto d-flex gap-1">
+          <button class="btn btn-sm btn-outline-secondary" id="jobPause"><i class="bi bi-pause-fill"></i> Pause</button>
+          <button class="btn btn-sm btn-outline-secondary" id="jobResume"><i class="bi bi-play-fill"></i> Resume</button>
+          <button class="btn btn-sm btn-outline-danger" id="jobCancel"><i class="bi bi-x-lg"></i> Stop</button>
+        </span>
+      </div>
+      <div id="jobProgress" class="mt-1"></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <input type="search" class="form-control form-control-sm" style="width: 240px" id="fQuery" placeholder="Search text or file path">
+      <select class="form-select form-select-sm w-auto" id="fStatus">
+        <option value="">All statuses</option>
+        <option value="pending">Pending</option>
+        <option value="processing">Processing</option>
+        <option value="done">Transcribed</option>
+        <option value="failed">Failed</option>
+        <option value="skipped">Skipped</option>
+      </select>
+      <select class="form-select form-select-sm w-auto" id="fReview">
+        <option value="">All reviews</option>
+        <option value="none">Not reviewed</option>
+        <option value="reviewed">Reviewed</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+      </select>
+      <select class="form-select form-select-sm w-auto" id="fSort">
+        <option value="path">Sort by path</option>
+        <option value="updated">Recently updated</option>
+        <option value="duration">Longest first</option>
+        <option value="id">Oldest first</option>
+      </select>
+      <select class="form-select form-select-sm w-auto" id="fPerPage">
+        <option value="25">25 per page</option>
+        <option value="50" selected>50 per page</option>
+        <option value="100">100 per page</option>
+        <option value="200">200 per page</option>
+      </select>
+      <div class="form-check form-check-inline ms-1 small"><input class="form-check-input" type="checkbox" id="fEdited"><label class="form-check-label" for="fEdited">Only edited</label></div>
+      <span class="ms-auto small text-secondary" id="pageInfo"></span>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2" id="bulkBar">
+      <span class="small text-secondary"><span id="selCount">0</span> selected</span>
+      <div class="btn-group btn-group-sm">
+        <button class="btn btn-outline-success" data-bulk="approve" disabled>Approve</button>
+        <button class="btn btn-outline-danger" data-bulk="reject" disabled>Reject</button>
+        <button class="btn btn-outline-secondary" data-bulk="reset_review" disabled>Clear review</button>
+        <button class="btn btn-outline-primary" data-bulk="retranscribe" disabled>Re-transcribe</button>
+        <button class="btn btn-outline-secondary" data-bulk="skip" disabled>Skip</button>
+        <button class="btn btn-outline-danger" data-bulk="delete" disabled>Delete</button>
+      </div>
+      <span class="ms-auto small text-secondary">Shortcuts: <span class="kbd">Ctrl+Enter</span> save and next, <span class="kbd">Ctrl+Space</span> play/pause, <span class="kbd">Alt+↑/↓</span> move, <span class="kbd">Alt+A</span> approve and next</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm records-table align-top mb-2">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 28px"><input type="checkbox" class="form-check-input" id="selAll"></th>
+            <th style="width: 290px">Audio</th>
+            <th style="width: 30%">Machine transcript</th>
+            <th>Corrected transcript</th>
+            <th style="width: 150px">Review</th>
+          </tr>
+        </thead>
+        <tbody id="recordsBody"><tr><td colspan="5" class="text-secondary">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <nav class="d-flex justify-content-between align-items-center">
+      <button class="btn btn-sm btn-outline-secondary" id="pagePrev">Previous</button>
+      <span class="small" id="pageLabel"></span>
+      <button class="btn btn-sm btn-outline-secondary" id="pageNext">Next</button>
+    </nav>
+  </div>
+</div>
+
+<!-- Project settings -->
+<div class="modal fade" id="settingsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Project settings</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">Name</label><input type="text" class="form-control" id="sName"></div>
+          <div class="col-md-6"><label class="form-label">Audio folder</label>
+            <div class="input-group"><input type="text" class="form-control font-monospace" id="sRoot"><button class="btn btn-outline-secondary" id="sBrowse" type="button">Browse</button></div></div>
+          <div class="col-md-6"><label class="form-label">Engine</label><select class="form-select" id="sEngine"></select><div class="help" id="sEngineHelp"></div></div>
+          <div class="col-md-6"><label class="form-label">Model</label><select class="form-select" id="sModel"></select><input type="text" class="form-control mt-1 d-none" id="sModelCustom"></div>
+          <div class="col-md-6"><label class="form-label">Language</label><input type="text" class="form-control" id="sLanguage" placeholder="blank = auto"><div class="help" id="sLanguageHelp"></div></div>
+          <div class="col-md-3"><label class="form-label">Chunking (new files)</label>
+            <select class="form-select" id="sChunkMode"><option value="none">None</option><option value="silence">Split at silences</option><option value="fixed">Fixed windows</option></select></div>
+          <div class="col-md-3"><label class="form-label">Chunk seconds</label><input type="number" class="form-control" id="sChunkSeconds" min="1"></div>
+          <div class="col-md-4"><label class="form-label">Rescan every (minutes)</label><input type="number" class="form-control" id="sWatch" min="0"></div>
+          <div class="col-md-4"><div class="form-check mt-4"><input class="form-check-input" type="checkbox" id="sAuto"><label class="form-check-label" for="sAuto">Transcribe new files automatically</label></div></div>
+          <div class="col-md-4"><label class="form-label">Notes</label><input type="text" class="form-control" id="sDescription"></div>
+          <div class="col-12" id="sEngineOptions"></div>
+        </div>
+        <div class="alert alert-danger mt-3 d-none" id="sError"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="sSave">Save</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Import -->
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Import data</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <p class="small text-secondary">Bring in an existing dataset or corrections: CSV, TSV, XLSX, JSON or JSONL with a column naming the audio file and a column with its text. Audio paths are resolved inside the project folder (relative or absolute).</p>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-8">
+            <label class="form-label">Data file</label>
+            <div class="input-group">
+              <input type="text" class="form-control font-monospace" id="iPath" placeholder="pick a file on the server or upload one">
+              <button class="btn btn-outline-secondary" id="iBrowse" type="button">Browse server</button>
+              <label class="btn btn-outline-secondary mb-0">Upload<input type="file" class="d-none" id="iUpload" accept=".csv,.tsv,.xlsx,.json,.jsonl"></label>
+            </div>
+          </div>
+          <div class="col-md-4"><button class="btn btn-outline-primary w-100" id="iSniff">Read columns</button></div>
+        </div>
+        <div id="iMapping" class="d-none mt-3">
+          <div class="row g-2">
+            <div class="col-md-4"><label class="form-label">Audio column</label><select class="form-select" id="iColAudio"></select></div>
+            <div class="col-md-4"><label class="form-label">Text column</label><select class="form-select" id="iColText"></select></div>
+            <div class="col-md-4"><label class="form-label">Corrected text column</label><select class="form-select" id="iColCorrected"></select></div>
+            <div class="col-md-4"><label class="form-label">If a record already exists</label>
+              <select class="form-select" id="iMode"><option value="add">Skip it</option><option value="update">Update its text</option></select></div>
+            <div class="col-md-4"><label class="form-label">Audio base folder (optional)</label><input type="text" class="form-control font-monospace" id="iBase" placeholder="defaults to the project folder"></div>
+            <div class="col-md-4"><div class="form-check mt-4"><input class="form-check-input" type="checkbox" id="iReviewed"><label class="form-check-label" for="iReviewed">Mark rows with corrected text as reviewed</label></div></div>
+          </div>
+          <div class="table-responsive mt-3"><table class="table table-sm small" id="iPreview"></table></div>
+        </div>
+        <div class="alert alert-danger mt-3 d-none" id="iError"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="iStart" disabled>Start import</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Export -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Export dataset</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-4"><label class="form-label">Format</label>
+            <select class="form-select" id="eFormat">
+              <option value="csv">CSV</option>
+              <option value="xlsx">Excel (XLSX)</option>
+              <option value="jsonl">JSON Lines</option>
+              <option value="audiofolder">Audio folder (metadata.csv + audio files)</option>
+            </select></div>
+          <div class="col-md-4"><label class="form-label">Text to export</label>
+            <select class="form-select" id="eText">
+              <option value="best">Corrected text, machine text as fallback</option>
+              <option value="corrected">Corrected text only</option>
+              <option value="machine">Machine text only</option>
+            </select></div>
+          <div class="col-md-4"><label class="form-label">File name</label><input type="text" class="form-control" id="eName"></div>
+          <div class="col-md-6"><label class="form-label">Review filter</label>
+            <div class="d-flex flex-wrap gap-3">
+              <div class="form-check"><input class="form-check-input eReview" type="checkbox" value="approved" id="eRa"><label class="form-check-label" for="eRa">Approved</label></div>
+              <div class="form-check"><input class="form-check-input eReview" type="checkbox" value="reviewed" id="eRr"><label class="form-check-label" for="eRr">Reviewed</label></div>
+              <div class="form-check"><input class="form-check-input eReview" type="checkbox" value="none" id="eRn"><label class="form-check-label" for="eRn">Not reviewed</label></div>
+              <div class="form-check"><input class="form-check-input eReview" type="checkbox" value="rejected" id="eRj"><label class="form-check-label" for="eRj">Rejected</label></div>
+            </div>
+            <div class="help">Nothing ticked = everything.</div></div>
+          <div class="col-md-6" id="eAudioOpts">
+            <label class="form-label">Audio folder options</label>
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="eZip"><label class="form-check-label" for="eZip">Also zip the folder for download</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="eWav"><label class="form-check-label" for="eWav">Convert all audio to 16 kHz mono WAV</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="eSkipEmpty" checked><label class="form-check-label" for="eSkipEmpty">Skip records with no text</label></div>
+          </div>
+        </div>
+        <div class="mt-3"><h6>Previous exports</h6><div id="eList" class="small"></div></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button class="btn btn-primary" id="eStart">Start export</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Files -->
+<div class="modal fade" id="filesModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Files</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="d-flex gap-2 mb-2">
+          <input type="search" class="form-control form-control-sm" style="width: 260px" id="flQuery" placeholder="Filter by path">
+          <select class="form-select form-select-sm w-auto" id="flStatus"><option value="">All</option><option value="ready">Ready</option><option value="new">New</option><option value="changed">Changed</option><option value="missing">Missing</option><option value="error">Error</option></select>
+          <button class="btn btn-sm btn-outline-warning" id="flReprepare" title="Rebuild records for files whose audio changed on disk">Re-prepare changed files</button>
+          <span class="ms-auto small text-secondary" id="flInfo"></span>
+        </div>
+        <table class="table table-sm small"><thead class="table-light"><tr><th>Path</th><th>Status</th><th>Duration</th><th>Size</th><th>Records</th><th></th></tr></thead><tbody id="flBody"></tbody></table>
+        <div class="d-flex justify-content-between"><button class="btn btn-sm btn-outline-secondary" id="flPrev">Previous</button><button class="btn btn-sm btn-outline-secondary" id="flNext">Next</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- History -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Record history</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="historyBody"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>window.PROJECT = {{ project | tojson }}; window.ENGINES = {{ engines | tojson }}; window.ME = {{ g.user | tojson }};</script>
+<script src="{{ url_for('static', filename='js/project.js') }}"></script>
+{% endblock %}

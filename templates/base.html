@@ -1,31 +1,123 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Speech Annotation Tool - Professional Transcription Review Platform</title>
-    <meta name="description" content="Professional ASR transcription review and correction tool with background processing and progress tracking">
-    
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Speech Annotation Tool{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
-<body>
-    <div class="container-fluid px-4 py-4">
-        {% block content %}{% endblock %}
+<body data-page="{{ page or '' }}" {% if project %}data-project-id="{{ project.id }}"{% endif %}>
+<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom sticky-top" id="topnav">
+  <div class="container-fluid">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+      <i class="bi bi-soundwave text-primary"></i><span>Speech Annotation Tool</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navLinks"><span class="navbar-toggler-icon"></span></button>
+    <div class="collapse navbar-collapse" id="navLinks">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link {% if page in ('dashboard','project') %}active{% endif %}" href="/"><i class="bi bi-folder2-open"></i> Projects</a></li>
+        <li class="nav-item"><a class="nav-link {% if page == 'models' %}active{% endif %}" href="/models"><i class="bi bi-cpu"></i> Models</a></li>
+        <li class="nav-item"><a class="nav-link {% if page == 'providers' %}active{% endif %}" href="/providers"><i class="bi bi-cloud"></i> Providers</a></li>
+        <li class="nav-item"><a class="nav-link {% if page == 'jobs' %}active{% endif %}" href="/jobs"><i class="bi bi-list-task"></i> Jobs <span class="badge rounded-pill text-bg-primary d-none" id="navJobCount">0</span></a></li>
+        {% if g.user and g.user.role == 'admin' %}
+        <li class="nav-item"><a class="nav-link {% if page == 'users' %}active{% endif %}" href="/users"><i class="bi bi-people"></i> Users</a></li>
+        <li class="nav-item"><a class="nav-link {% if page == 'settings' %}active{% endif %}" href="/settings"><i class="bi bi-sliders"></i> Settings</a></li>
+        {% endif %}
+      </ul>
+      <div class="d-flex align-items-center gap-3">
+        <span class="small text-secondary d-none d-xl-inline" id="navLoadedModel" title="Local model currently in memory"></span>
+        <div class="d-flex align-items-center" id="navOnline" title="Online now"></div>
+        <div class="dropdown">
+          <button class="btn btn-light position-relative" data-bs-toggle="dropdown" data-bs-auto-close="outside" id="notifBtn" title="Notifications">
+            <i class="bi bi-bell"></i>
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger d-none" id="notifBadge">0</span>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end p-0 shadow" style="width: 360px;">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+              <strong>Notifications</strong>
+              <button class="btn btn-sm btn-link p-0" id="notifReadAll">Mark all read</button>
+            </div>
+            <div id="notifList" class="notif-list"><div class="p-3 text-secondary small">Nothing yet</div></div>
+          </div>
+        </div>
+        <div class="dropdown">
+          <button class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="bi bi-person-circle"></i> {{ g.user.display_name if g.user else '' }}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><span class="dropdown-item-text small text-secondary">{{ g.user.username if g.user else '' }} ({{ g.user.role if g.user else '' }})</span></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#passwordModal"><i class="bi bi-key"></i> Change password</a></li>
+            <li><a class="dropdown-item" href="/logout"><i class="bi bi-box-arrow-right"></i> Log out</a></li>
+          </ul>
+        </div>
+      </div>
     </div>
-    
-    <!-- Bootstrap 5 JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Application JS -->
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  </div>
+</nav>
+
+<div id="jobBar" class="job-bar d-none">
+  <div class="container-fluid d-flex align-items-center gap-3 py-1 small">
+    <span class="spinner-border spinner-border-sm text-primary"></span>
+    <div class="flex-grow-1" id="jobBarItems"></div>
+    <a href="/jobs" class="text-decoration-none">All jobs</a>
+  </div>
+</div>
+
+<main class="container-fluid py-3">
+  {% block content %}{% endblock %}
+</main>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toasts"></div>
+
+<div class="modal fade" id="passwordModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Change password</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Current password</label><input type="password" class="form-control" id="pwCurrent" autocomplete="current-password"></div>
+        <div class="mb-3"><label class="form-label">New password</label><input type="password" class="form-control" id="pwNew" autocomplete="new-password"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-primary" id="pwSave">Save</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="fsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="fsTitle">Choose a folder</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="input-group mb-2">
+          <button class="btn btn-outline-secondary" id="fsUp" title="Up one level"><i class="bi bi-arrow-up"></i></button>
+          <input type="text" class="form-control font-monospace" id="fsPath" placeholder="Type a path and press Enter">
+          <button class="btn btn-outline-secondary" id="fsGo">Go</button>
+        </div>
+        <div class="d-flex flex-wrap gap-1 mb-2" id="fsRoots"></div>
+        <div class="list-group" id="fsList"></div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <span class="small text-secondary" id="fsHint"></span>
+        <button class="btn btn-primary" id="fsChoose">Use this folder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="confirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body" id="confirmText"></div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-danger" id="confirmOk">Confirm</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

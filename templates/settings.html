@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Settings - Speech Annotation Tool{% endblock %}
+{% block content %}
+<div class="mb-3">
+  <h4 class="mb-0">Settings</h4>
+  <div class="text-secondary small">Everything here is stored in the database and takes effect right away. Only the port, data folder and first admin come from the .env file.</div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card"><div class="card-body">
+      <h6>Processing</h6>
+      <div class="row g-3">
+        <div class="col-md-4"><label class="form-label">Parallel jobs</label><input type="number" class="form-control" data-key="max_parallel_jobs" min="1" max="16"><div class="help">How many jobs run at once. Only one job may use a local model at a time regardless.</div></div>
+        <div class="col-md-4"><label class="form-label">API concurrency</label><input type="number" class="form-control" data-key="api_concurrency" min="1" max="32"><div class="help">Parallel requests when a job uses a hosted provider.</div></div>
+        <div class="col-md-4"><label class="form-label">Local device</label><select class="form-select" data-key="local_device"><option value="auto">auto (GPU when available)</option><option value="cpu">cpu</option><option value="cuda">cuda</option></select></div>
+        <div class="col-md-4"><label class="form-label">Compute type</label><select class="form-select" data-key="compute_type"><option value="auto">auto (int8 on CPU, float16 on GPU)</option><option value="int8">int8</option><option value="int8_float16">int8_float16</option><option value="float16">float16</option><option value="float32">float32</option></select><div class="help">Applies to faster-whisper.</div></div>
+        <div class="col-md-4"><label class="form-label">CPU threads</label><input type="number" class="form-control" data-key="cpu_threads" min="0" max="128"><div class="help">0 = library default. Lower this on shared or weak machines.</div></div>
+        <div class="col-md-4"><label class="form-label">Unload idle model after (minutes)</label><input type="number" class="form-control" data-key="unload_idle_minutes" min="0"><div class="help">Frees RAM when no job needs the model. 0 = never.</div></div>
+        <div class="col-md-6"><div class="form-check mt-2"><input class="form-check-input" type="checkbox" data-key="auto_resume_jobs" id="setAutoResume"><label class="form-check-label" for="setAutoResume">Resume interrupted jobs automatically after a restart or crash</label></div></div>
+      </div>
+      <hr>
+      <h6>Audio and chunking defaults</h6>
+      <div class="row g-3">
+        <div class="col-md-12"><label class="form-label">Audio file extensions to track</label><input type="text" class="form-control" data-key="audio_extensions"><div class="help">Comma separated. Every other file type is ignored during scans.</div></div>
+        <div class="col-md-3"><label class="form-label">Default chunk mode</label><select class="form-select" data-key="default_chunk_mode"><option value="none">none</option><option value="silence">silence</option><option value="fixed">fixed</option></select></div>
+        <div class="col-md-3"><label class="form-label">Default chunk seconds</label><input type="number" class="form-control" data-key="default_chunk_seconds" min="1"></div>
+        <div class="col-md-3"><label class="form-label">Silence threshold (dB)</label><input type="number" class="form-control" data-key="silence_threshold_db" max="0"><div class="help">Quieter than this counts as silence.</div></div>
+        <div class="col-md-3"><label class="form-label">Minimum silence (seconds)</label><input type="number" class="form-control" data-key="min_silence_seconds" step="0.1" min="0.1"></div>
+        <div class="col-md-6"><label class="form-label">ffmpeg folder or executable</label><input type="text" class="form-control" data-key="ffmpeg_path" placeholder="blank = use PATH"></div>
+      </div>
+      <hr>
+      <h6>Collaboration</h6>
+      <div class="row g-3">
+        <div class="col-md-4"><label class="form-label">Edit claim timeout (seconds)</label><input type="number" class="form-control" data-key="claim_timeout_seconds" min="30"><div class="help">A record someone started editing is released after this much inactivity.</div></div>
+        <div class="col-md-4"><label class="form-label">Status refresh (seconds)</label><input type="number" class="form-control" data-key="status_poll_seconds" min="1" max="60"></div>
+        <div class="col-md-4"><label class="form-label">Job log lines kept</label><input type="number" class="form-control" data-key="job_log_lines" min="100"></div>
+      </div>
+      <div class="mt-3 d-flex gap-2"><button class="btn btn-primary" id="setSave">Save settings</button><span class="small text-secondary align-self-center" id="setMsg"></span></div>
+    </div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card"><div class="card-header bg-white">This machine</div><div class="card-body small" id="setCaps"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,10 @@
+name: speech-annotation-tool
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - ffmpeg
+  - pip
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cpu
+      - -r requirements.txt

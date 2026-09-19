@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    image: speech-annotation-tool
+    container_name: speech-annotation-tool
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      SECRET_KEY: ${SECRET_KEY:-}
+    volumes:
+      # App database, downloaded models, segments, exports and logs
+      - ./data:/app/data
+      # Your audio. Set AUDIO_DIR in .env to any folder on the host,
+      # for example AUDIO_DIR=C:\recordings or AUDIO_DIR=/srv/audio
+      - ${AUDIO_DIR:-./audio}:/audio
+    restart: unless-stopped

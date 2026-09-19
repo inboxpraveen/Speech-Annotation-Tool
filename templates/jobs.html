@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Jobs - Speech Annotation Tool{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-0">Jobs</h4>
+    <div class="text-secondary small">Scans, transcriptions, imports, exports and model downloads. Running jobs survive restarts and continue where they stopped.</div>
+  </div>
+  <div class="d-flex gap-2">
+    <select class="form-select form-select-sm w-auto" id="jFilter">
+      <option value="">All jobs</option>
+      <option value="queued,running,paused" selected>Active</option>
+      <option value="completed">Completed</option>
+      <option value="failed,cancelled">Failed or cancelled</option>
+    </select>
+    <button class="btn btn-sm btn-outline-secondary" id="jClear"><i class="bi bi-trash"></i> Clear finished</button>
+  </div>
+</div>
+<div class="card">
+  <table class="table table-sm mb-0 align-middle">
+    <thead class="table-light"><tr><th>#</th><th>Job</th><th>Project</th><th style="width: 22%">Progress</th><th>Status</th><th>Started by</th><th>When</th><th></th></tr></thead>
+    <tbody id="jBody"><tr><td colspan="8" class="text-secondary">Loading...</td></tr></tbody>
+  </table>
+  <div class="card-footer bg-white d-flex justify-content-between">
+    <button class="btn btn-sm btn-outline-secondary" id="jPrev">Previous</button>
+    <span class="small" id="jInfo"></span>
+    <button class="btn btn-sm btn-outline-secondary" id="jNext">Next</button>
+  </div>
+</div>
+
+<div class="modal fade" id="logModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="logTitle">Job log</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body"><div id="logMeta" class="small text-secondary mb-2"></div><div class="log-view" id="logView"></div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/jobs.js') }}"></script>
+{% endblock %}

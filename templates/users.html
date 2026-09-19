@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Users - Speech Annotation Tool{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-0">Users</h4>
+    <div class="text-secondary small">Create accounts for your team. Everyone sees who is online and which record they are working on.</div>
+  </div>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal" id="btnNewUser"><i class="bi bi-person-plus"></i> Add user</button>
+</div>
+<div class="card">
+  <table class="table table-sm mb-0 align-middle">
+    <thead class="table-light"><tr><th></th><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th>Working on</th><th>Last login</th><th></th></tr></thead>
+    <tbody id="uBody"></tbody>
+  </table>
+</div>
+
+<div class="modal fade" id="userModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="uTitle">Add user</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="uId">
+        <div class="mb-2"><label class="form-label">Username</label><input type="text" class="form-control" id="uUsername" autocomplete="off"></div>
+        <div class="mb-2"><label class="form-label">Display name</label><input type="text" class="form-control" id="uDisplay"></div>
+        <div class="mb-2"><label class="form-label">Password <span class="text-secondary small" id="uPwHint"></span></label><input type="text" class="form-control" id="uPassword" autocomplete="new-password"></div>
+        <div class="mb-2"><label class="form-label">Role</label><select class="form-select" id="uRole"><option value="member">Member</option><option value="admin">Admin</option></select></div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="uActive" checked><label class="form-check-label" for="uActive">Active (can sign in)</label></div>
+        <div class="alert alert-danger mt-3 d-none" id="uError"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-primary" id="uSave">Save</button></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>window.ME = {{ g.user | tojson }};</script>
+<script src="{{ url_for('static', filename='js/users.js') }}"></script>
+{% endblock %}

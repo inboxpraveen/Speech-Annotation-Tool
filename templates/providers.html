@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Providers - Speech Annotation Tool{% endblock %}
+{% block content %}
+<div class="mb-3">
+  <h4 class="mb-0">Providers</h4>
+  <div class="text-secondary small">API keys and default models for hosted speech-to-text services, plus default options for the local engines. Keys are stored in the app database on this machine.</div>
+</div>
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabApi">API providers</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabLocal">Local engine defaults</a></li>
+</ul>
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="tabApi"><div class="row g-3" id="apiCards"><div class="text-secondary">Loading...</div></div></div>
+  <div class="tab-pane fade" id="tabLocal"><div class="row g-3" id="localCards"></div></div>
+</div>
+
+<div class="modal fade" id="testModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Test result</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="testBody"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>window.IS_ADMIN = {{ 'true' if g.user.role == 'admin' else 'false' }};</script>
+<script src="{{ url_for('static', filename='js/providers.js') }}"></script>
+{% endblock %}

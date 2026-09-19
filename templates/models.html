@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Local models - Speech Annotation Tool{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-0">Local models</h4>
+    <div class="text-secondary small">Models download on demand into the data folder and load into memory when a job needs them.</div>
+  </div>
+  <button class="btn btn-outline-secondary" id="btnUnload"><i class="bi bi-eject"></i> Unload model from memory</button>
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-8">
+    <div id="engineCards"><div class="text-secondary">Loading...</div></div>
+  </div>
+  <div class="col-xl-4">
+    <div class="card mb-3">
+      <div class="card-header bg-white"><i class="bi bi-hdd"></i> This machine</div>
+      <div class="card-body small" id="capabilities"></div>
+    </div>
+    <div class="card mb-3">
+      <div class="card-header bg-white"><i class="bi bi-memory"></i> In memory</div>
+      <div class="card-body small" id="loadedInfo">Nothing loaded</div>
+    </div>
+    <div class="card mb-3">
+      <div class="card-header bg-white"><i class="bi bi-download"></i> Downloads</div>
+      <div class="card-body small" id="downloads">None running</div>
+    </div>
+    <div class="card mb-3">
+      <div class="card-header bg-white"><i class="bi bi-archive"></i> Downloaded files</div>
+      <ul class="list-group list-group-flush small" id="cacheList"></ul>
+    </div>
+    {% if g.user.role == 'admin' %}
+    <div class="card">
+      <div class="card-header bg-white"><i class="bi bi-key"></i> Hugging Face token</div>
+      <div class="card-body">
+        <div class="help mb-2">Needed for gated repos such as IndicConformer. Create one at huggingface.co/settings/tokens after accepting the model terms.</div>
+        <div class="input-group input-group-sm">
+          <input type="password" class="form-control" id="hfToken" placeholder="hf_...">
+          <button class="btn btn-outline-primary" id="hfSave">Save</button>
+        </div>
+        <div class="small text-secondary mt-1" id="hfState"></div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="modal fade" id="testModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Test result</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="testBody"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>window.IS_ADMIN = {{ 'true' if g.user.role == 'admin' else 'false' }};</script>
+<script src="{{ url_for('static', filename='js/models.js') }}"></script>
+{% endblock %}
