@@ -383,10 +383,17 @@ def run_transcribe(ctx):
         where += " AND id IN (%s)" % ",".join("?" for _ in record_ids)
         params += list(record_ids)
     remaining = db.scalar("SELECT COUNT(*) FROM records WHERE " + where, params)
-    ctx.progress(total=ctx.done + ctx.failed + remaining, message="using %s / %s" % (engine["name"], model), force=True)
+    using = "using %s / %s" % (engine["name"], model)
+    ctx.progress(total=ctx.done + ctx.failed + remaining, message=using, force=True)
     ctx.log("engine %s, model %s, language %s, %d records to do" % (engine_id, model, language or "auto", remaining))
     if remaining == 0:
         return {"summary": "nothing to transcribe", "transcribed": 0}
+    # The first record of a model that is not on disk yet waits for the download.
+    # Say so, otherwise the job looks stuck at 0 for minutes.
+    first_use = {"pending": engine["kind"] == "local" and not local_engines.is_downloaded(engine_id, model, options)}
+    if first_use["pending"]:
+        ctx.progress(message="downloading model %s, the first run takes a while" % model, force=True)
+        ctx.log("model %s is not downloaded yet, downloading it now" % model)
     concurrency = 1
     if engine["kind"] == "api":
         try:
@@ -410,7 +417,12 @@ def run_transcribe(ctx):
             wav, temporary = None, False
             try:
                 wav, temporary = audio.prepared_wav(rec)
-                res = engines.transcribe(engine_id, model, wav, language, options)
+                try:
+                    res = engines.transcribe(engine_id, model, wav, language, options)
+                finally:
+                    if first_use["pending"]:
+                        first_use["pending"] = False
+                        ctx.progress(message=using, force=True)
                 db.update(
                     "records",
                     rec["id"],

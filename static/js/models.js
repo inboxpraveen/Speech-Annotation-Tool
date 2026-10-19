@@ -20,7 +20,10 @@
   }
 
   function render() {
+    const typed = {};
+    cards.querySelectorAll('[data-custom-input]').forEach(el => typed[el.dataset.customInput] = el.value);
     cards.innerHTML = data.engines.map(engineCard).join('');
+    cards.querySelectorAll('[data-custom-input]').forEach(el => el.value = typed[el.dataset.customInput] || '');
     const c = data.capabilities;
     document.getElementById('capabilities').innerHTML =
       row('ffmpeg', c.ffmpeg ? (c.ffmpeg_version || 'found') : 'missing', c.ffmpeg) +
@@ -32,10 +35,14 @@
       row('qwen-asr', c.qwen_asr ? 'installed' : 'optional, not installed', c.qwen_asr);
     const lm = data.loaded;
     document.getElementById('loadedInfo').innerHTML = lm ? '<strong>' + SAT.esc(lm.model) + '</strong><div class="text-secondary">' + SAT.esc(lm.engine) + ' on ' + SAT.esc(lm.device) + ', idle for ' + SAT.fmtDuration(lm.idle_seconds) + '</div>' : 'Nothing loaded';
-    document.getElementById('downloads').innerHTML = data.downloads.length ? data.downloads.map(j => '<div class="mb-2"><div class="d-flex justify-content-between"><span>' + SAT.esc(j.title) + '</span>' + SAT.statusBadge(j.status) + '</div>' + SAT.jobProgress(j) + '<div class="text-secondary">' + SAT.esc(j.message || '') + '</div><button class="btn btn-link btn-sm p-0 text-danger" data-cancel-job="' + j.id + '">cancel</button></div>').join('') : 'None running';
+    renderDownloads(data.downloads);
     document.getElementById('cacheList').innerHTML = data.cache.length ? data.cache.map(r => '<li class="list-group-item d-flex justify-content-between align-items-center"><span class="truncate" title="' + SAT.esc(r.repo) + '">' + SAT.esc(r.repo) + '</span><span class="text-nowrap">' + SAT.fmtBytes(r.size) + (window.IS_ADMIN ? ' <button class="btn btn-link btn-sm p-0 text-danger" data-delete-repo="' + SAT.esc(r.repo) + '" title="Delete from disk"><i class="bi bi-trash"></i></button>' : '') + '</span></li>').join('') : '<li class="list-group-item text-secondary">Nothing downloaded yet</li>';
     const hf = document.getElementById('hfState');
     if (hf) hf.textContent = data.hf_token_set ? 'A token is saved.' : 'No token saved.';
+  }
+
+  function renderDownloads(list) {
+    document.getElementById('downloads').innerHTML = list.length ? list.map(j => '<div class="mb-2"><div class="d-flex justify-content-between"><span>' + SAT.esc(j.title) + '</span>' + SAT.statusBadge(j.status) + '</div>' + SAT.jobProgress(j) + '<div class="text-secondary">' + SAT.esc(j.message || '') + '</div><button class="btn btn-link btn-sm p-0 text-danger" data-cancel-job="' + j.id + '">cancel</button></div>').join('') : 'None running';
   }
 
   function row(k, v, ok) {
@@ -102,9 +109,13 @@
     try { await SAT.api('PUT', '/api/settings', { hf_token: document.getElementById('hfToken').value.trim() }); SAT.toast('Token saved', 'success'); document.getElementById('hfToken').value = ''; load(); } catch (e) { SAT.toast(e.message, 'danger'); }
   });
 
+  // Download progress comes with the status poll. The full reload (disk scan of the model
+  // cache, and it redraws the model list) only runs when a download starts or ends.
   window.addEventListener('sat:status', (ev) => {
-    const dl = (ev.detail.jobs || []).filter(j => j.type === 'download');
-    if (dl.length || (data && data.downloads.length)) load();
+    if (!data) return;
+    const dl = (ev.detail.jobs || []).filter(j => j.type === 'download').reverse();
+    if (dl.length !== data.downloads.length) load();
+    else if (dl.length) renderDownloads(dl);
   });
 
   load();

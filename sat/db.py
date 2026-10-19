@@ -95,9 +95,12 @@ CREATE TABLE IF NOT EXISTS records (
     created_at TEXT NOT NULL,
     transcribed_at TEXT
 );
-CREATE INDEX IF NOT EXISTS idx_records_project_status ON records(project_id, status);
+-- Covers the per-project stats the status poll reads every few seconds.
+CREATE INDEX IF NOT EXISTS idx_records_project_stats ON records(project_id, status, review, duration);
+DROP INDEX IF EXISTS idx_records_project_status;
 CREATE INDEX IF NOT EXISTS idx_records_project_review ON records(project_id, review);
 CREATE INDEX IF NOT EXISTS idx_records_file ON records(file_id);
+CREATE INDEX IF NOT EXISTS idx_records_claimed ON records(project_id) WHERE claimed_by IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS record_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Users - Speech Annotation Tool{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <div>
     <h4 class="mb-0">Users</h4>
     <div class="text-secondary small">Create accounts for your team. Everyone sees who is online and which record they are working on.</div>
@@ -9,10 +9,12 @@
   <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal" id="btnNewUser"><i class="bi bi-person-plus"></i> Add user</button>
 </div>
 <div class="card">
+  <div class="table-responsive">
   <table class="table table-sm mb-0 align-middle">
     <thead class="table-light"><tr><th></th><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th>Working on</th><th>Last login</th><th></th></tr></thead>
     <tbody id="uBody"></tbody>
   </table>
+  </div>
 </div>
 
 <div class="modal fade" id="userModal" tabindex="-1">

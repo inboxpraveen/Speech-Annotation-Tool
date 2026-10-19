@@ -104,12 +104,13 @@ body {
   background: #fffdf3;
 }
 
-.records-table tr.claimed-other {
-  background: #fff5f5;
+/* Bootstrap paints every cell with its own background, so row colours go on the cells. */
+.records-table tr.claimed-other > td {
+  background-color: #fff5f5;
 }
 
-.records-table tr.selected {
-  background: #eef4ff;
+.records-table tr.selected > td {
+  background-color: #eef4ff;
 }
 
 .records-table tr.active-row {
@@ -172,4 +173,62 @@ body {
 
 .speed-btn {
   min-width: 42px;
+}
+
+.notif-menu {
+  width: min(360px, calc(100vw - 1.5rem));
+}
+
+/* In the collapsed navbar (below xl) the bell sits on the left, so a right aligned
+   menu would open off screen. Hang it from the navbar's right edge instead. */
+@media (max-width: 1199.98px) {
+  .notif-dropdown {
+    position: static;
+  }
+
+  .notif-dropdown .notif-menu {
+    right: 0.75rem;
+    width: min(360px, calc(100% - 1.5rem));
+  }
+}
+
+/* Phones and tablets: one block per record instead of five table columns,
+   so the editor is usable without scrolling sideways. */
+@media (max-width: 991.98px) {
+  .records-table thead {
+    display: none;
+  }
+
+  .records-table,
+  .records-table tbody,
+  .records-table tr,
+  .records-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .records-table tr {
+    border-bottom: 1px solid var(--sat-border);
+    padding: 0.5rem 0;
+  }
+
+  .records-table > :not(caption) > * > * {
+    border-bottom-width: 0;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .records-table td:first-child:not([colspan]) {
+    float: left;
+    width: auto;
+  }
+
+  .records-table td:nth-child(2) {
+    display: flow-root;
+    width: auto;
+  }
+
+  .records-table audio {
+    width: 100%;
+    max-width: 420px;
+  }
 }

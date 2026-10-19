@@ -5,10 +5,12 @@ of any size are streamed rather than loaded into memory. Speech engines all
 receive 16 kHz mono 16-bit WAV.
 """
 import hashlib
+import os
 import re
 import shutil
 import subprocess
 import sys
+import uuid
 import wave
 from pathlib import Path
 
@@ -94,19 +96,28 @@ def probe_duration(path):
 
 
 def to_wav16k(src, dst, start=None, end=None):
-    """Convert (a slice of) any audio file to 16 kHz mono PCM WAV."""
+    """Convert (a slice of) any audio file to 16 kHz mono PCM WAV.
+
+    ffmpeg writes to a temporary name that is renamed at the end, so a crash
+    or a second request for the same file never sees a half written WAV.
+    """
     dst = Path(dst)
     dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_name("%s.%s.tmp" % (dst.name, uuid.uuid4().hex[:8]))
     cmd = [_tool("ffmpeg"), "-hide_banner", "-loglevel", "error", "-y", "-nostdin"]
     if start is not None:
         cmd += ["-ss", "%.3f" % start]
     cmd += ["-i", str(src)]
     if end is not None and start is not None:
         cmd += ["-t", "%.3f" % max(0.0, end - start)]
-    cmd += ["-vn", "-ac", "1", "-ar", str(SAMPLE_RATE), "-acodec", "pcm_s16le", "-f", "wav", str(dst)]
-    _run(cmd)
-    if not dst.exists() or dst.stat().st_size < 100:
-        raise AudioError("conversion produced no audio for %s" % src)
+    cmd += ["-vn", "-ac", "1", "-ar", str(SAMPLE_RATE), "-acodec", "pcm_s16le", "-f", "wav", str(tmp)]
+    try:
+        _run(cmd)
+        if not tmp.exists() or tmp.stat().st_size < 100:
+            raise AudioError("conversion produced no audio for %s" % src)
+        os.replace(tmp, dst)
+    finally:
+        tmp.unlink(missing_ok=True)
     return dst
 
 

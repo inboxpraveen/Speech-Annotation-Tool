@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 <body data-page="{{ page or '' }}" {% if project %}data-project-id="{{ project.id }}"{% endif %}>
-<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom sticky-top" id="topnav">
+<nav class="navbar navbar-expand-xl bg-body-tertiary border-bottom sticky-top" id="topnav">
   <div class="container-fluid">
     <a class="navbar-brand d-flex align-items-center gap-2" href="/">
       <i class="bi bi-soundwave text-primary"></i><span>Speech Annotation Tool</span>
@@ -30,12 +30,12 @@
       <div class="d-flex align-items-center gap-3">
         <span class="small text-secondary d-none d-xl-inline" id="navLoadedModel" title="Local model currently in memory"></span>
         <div class="d-flex align-items-center" id="navOnline" title="Online now"></div>
-        <div class="dropdown">
+        <div class="dropdown notif-dropdown">
           <button class="btn btn-light position-relative" data-bs-toggle="dropdown" data-bs-auto-close="outside" id="notifBtn" title="Notifications">
             <i class="bi bi-bell"></i>
             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger d-none" id="notifBadge">0</span>
           </button>
-          <div class="dropdown-menu dropdown-menu-end p-0 shadow" style="width: 360px;">
+          <div class="dropdown-menu dropdown-menu-end p-0 shadow notif-menu">
             <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
               <strong>Notifications</strong>
               <button class="btn btn-sm btn-link p-0" id="notifReadAll">Mark all read</button>

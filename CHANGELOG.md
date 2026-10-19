@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+Fixed
+
+- The review page no longer redraws rows on every status refresh. Audio kept stopping and the text box lost focus every two seconds. Rows a user is typing in, focused on or listening to are never redrawn; reloads after a scan or a finished job wait until the user is idle.
+- The status refresh no longer waits for a local model to load or transcribe. During a first model download the app looked frozen and could run out of server threads.
+- Pressing a button while a status refresh was in flight started a second refresh loop. Refreshes now run one at a time, and hidden tabs refresh every 30 seconds.
+- Edit claims stay alive while the user keeps typing, so a long edit is not released after three minutes.
+- A save that conflicts with someone else's edit keeps the text the user typed.
+- Select all no longer discards unsaved text.
+- Selected and claimed rows are highlighted again.
+- A transcription job says when it is downloading a model for the first time.
+- The models page no longer clears a typed model id while a download runs.
+- The projects and jobs pages refresh once more when a job ends, so finished jobs do not look stuck.
+- Converted audio is written under a temporary name and renamed, so an interrupted conversion never leaves a broken file in the cache.
+
+Changed
+
+- Layout works on phones and tablets: records stack into one block each below 992 px, wide tables scroll inside their card, and the notifications menu stays on screen.
+- Faster on big projects: indexes for the project stats and edit claims, record counts skip the files table unless searching, and the review page refreshes visible rows by id. On a 500,000 record project a status refresh went from about 500 ms to 50 ms.
+- Project and dashboard pages no longer import torch or run ffmpeg on every load. The first page after a start took about 5 seconds.
+
 ## 3.0.0 (2026-09-19)
 
 Complete rewrite. Projects and data from 2.x are not migrated automatically, but the old `transcriptions.csv` imports as it is (More > Import data).

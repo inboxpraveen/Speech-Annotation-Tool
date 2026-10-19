@@ -65,7 +65,7 @@ All endpoints live under `/api` and return JSON. A session cookie from `/login` 
 | `GET/POST /api/projects`, `GET/PUT/DELETE /api/projects/<id>` | Projects |
 | `POST /api/projects/<id>/scan` `{transcribe_after, reprepare}` | Queue a scan |
 | `POST /api/projects/<id>/transcribe` `{record_ids, retry_failed, provider, model, language}` | Queue transcription |
-| `GET /api/projects/<id>/records?page=&per_page=&status=&review=&q=&sort=&edited=` | Paged records |
+| `GET /api/projects/<id>/records?page=&per_page=&status=&review=&q=&sort=&edited=&ids=` | Paged records. `ids` (comma separated) limits the list to those records; the review page uses it to refresh the rows on screen. |
 | `GET/PUT /api/records/<id>` | Read or save a record (`corrected_text`, `review`, `notes`, `status`, `version`) |
 | `POST /api/records/<id>/claim`, `/release` | Edit claims |
 | `GET /api/records/<id>/history`, `GET /api/records/<id>/audio` | History, audio stream (supports range requests) |

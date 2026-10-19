@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Jobs - Speech Annotation Tool{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <div>
     <h4 class="mb-0">Jobs</h4>
     <div class="text-secondary small">Scans, transcriptions, imports, exports and model downloads. Running jobs survive restarts and continue where they stopped.</div>
@@ -17,10 +17,12 @@
   </div>
 </div>
 <div class="card">
+  <div class="table-responsive">
   <table class="table table-sm mb-0 align-middle">
     <thead class="table-light"><tr><th>#</th><th>Job</th><th>Project</th><th style="width: 22%">Progress</th><th>Status</th><th>Started by</th><th>When</th><th></th></tr></thead>
     <tbody id="jBody"><tr><td colspan="8" class="text-secondary">Loading...</td></tr></tbody>
   </table>
+  </div>
   <div class="card-footer bg-white d-flex justify-content-between">
     <button class="btn btn-sm btn-outline-secondary" id="jPrev">Previous</button>
     <span class="small" id="jInfo"></span>

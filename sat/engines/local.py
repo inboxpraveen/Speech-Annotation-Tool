@@ -115,20 +115,28 @@ def cpu_threads():
         return 0
 
 
-def capabilities():
-    """What is installed and which accelerators are visible. Shown on the Models page."""
-    caps = {
+def installed():
+    """Which local engines can be imported. Cheap enough for every page load."""
+    hf = module_available("transformers") and module_available("torch")
+    return {
         "faster_whisper": module_available("faster_whisper"),
         "onnx_asr": module_available("onnx_asr"),
-        "transformers": module_available("transformers") and module_available("torch"),
-        "indic_conformer": module_available("transformers") and module_available("torch"),
+        "transformers": hf,
+        "indic_conformer": hf,
         "qwen_asr": module_available("qwen_asr"),
+    }
+
+
+def capabilities():
+    """What is installed and which accelerators are visible. Shown on the Models page."""
+    caps = installed()
+    caps.update({
         "torch_cuda": torch_cuda(),
         "ctranslate2_cuda": ctranslate2_cuda(),
         "onnx_cuda": onnx_cuda(),
         "ffmpeg": audio.ffmpeg_available(),
         "ffmpeg_version": audio.ffmpeg_version(),
-    }
+    })
     try:
         import torch
         caps["torch_version"] = torch.__version__
@@ -142,11 +150,13 @@ def capabilities():
 # Loading ---------------------------------------------------------------------
 
 def loaded_model():
-    with _lock:
-        if _cache["key"] is None:
-            return None
-        engine, model, device, extra = _cache["key"]
-        return {"engine": engine, "model": model, "device": device, "idle_seconds": int(time.time() - _cache["last_used"])}
+    # No lock here: the status poll calls this, and _lock is held for the whole
+    # of a model load or download and every transcription.
+    key, last_used = _cache["key"], _cache["last_used"]
+    if key is None:
+        return None
+    engine, model, device, extra = key
+    return {"engine": engine, "model": model, "device": device, "idle_seconds": int(time.time() - last_used)}
 
 
 def unload():
@@ -173,9 +183,15 @@ def unload_if_idle():
         minutes = 0
     if minutes <= 0:
         return
-    with _lock:
+    # A held lock means a model is loading or transcribing, so it is not idle.
+    # Waiting for it would stall the scheduler loop.
+    if not _lock.acquire(blocking=False):
+        return
+    try:
         if _cache["obj"] is not None and time.time() - _cache["last_used"] > minutes * 60:
             unload()
+    finally:
+        _lock.release()
 
 
 def get_model(engine, model, options=None):

@@ -64,15 +64,21 @@
     };
   }
 
-  async function loadRecords(keepScroll) {
+  function recordParams() {
     const f = filters();
     const params = new URLSearchParams({ page: state.page, per_page: state.perPage, sort: f.sort });
     if (f.q) params.set('q', f.q);
     if (f.status) params.set('status', f.status);
     if (f.review) params.set('review', f.review);
     if (f.edited) params.set('edited', '1');
+    return params;
+  }
+
+  async function loadRecords() {
+    state.lastRefresh = Date.now();
     try {
-      const data = await SAT.api('GET', '/api/projects/' + pid + '/records?' + params.toString());
+      const data = await SAT.api('GET', '/api/projects/' + pid + '/records?' + recordParams().toString());
+      state.reloadPending = false;
       state.records = data.items; state.total = data.total;
       renderRecords();
       const pages = Math.max(1, Math.ceil(state.total / state.perPage));
@@ -80,7 +86,6 @@
       document.getElementById('pageInfo').textContent = state.total + ' records match';
       document.getElementById('pagePrev').disabled = state.page <= 1;
       document.getElementById('pageNext').disabled = state.page >= pages;
-      state.lastRefresh = Date.now();
     } catch (e) { SAT.toast(e.message, 'danger'); }
   }
 
@@ -101,7 +106,7 @@
       '<td><div class="machine-text">' + (r.status === 'pending' ? '<span class="text-secondary">waiting for transcription</span>' : r.status === 'processing' ? '<span class="text-primary">transcribing...</span>' : SAT.esc(r.text || '')) + '</div></td>' +
       '<td><textarea class="form-control corrected" rows="3" ' + (claimedOther ? 'readonly' : '') + '>' + SAT.esc(value) + '</textarea>' +
       '<input type="text" class="form-control form-control-sm mt-1 notes" placeholder="notes" value="' + SAT.esc(r.notes || '') + '"></td>' +
-      '<td><div class="d-flex flex-column gap-1">' +
+      '<td><div class="d-flex flex-wrap flex-lg-column align-items-center align-items-lg-stretch gap-1">' +
       '<div>' + SAT.statusBadge(r.review) + (r.updated_by_name ? '<div class="small text-secondary">' + SAT.esc(r.updated_by_name) + ', ' + SAT.ago(r.updated_at) + '</div>' : '') + '</div>' +
       '<button class="btn btn-sm btn-primary" data-act="save" title="Save corrected text (Ctrl+Enter)"><i class="bi bi-check-lg"></i> Save</button>' +
       '<div class="btn-group btn-group-sm"><button class="btn btn-outline-success" data-act="approve" title="Save and approve (Alt+A)"><i class="bi bi-hand-thumbs-up"></i></button><button class="btn btn-outline-danger" data-act="reject" title="Save and reject"><i class="bi bi-hand-thumbs-down"></i></button><button class="btn btn-outline-secondary" data-act="skip" title="Mark as skipped"><i class="bi bi-skip-forward"></i></button></div>' +
@@ -115,6 +120,15 @@
 
   function rowOf(el) { return el.closest('tr[data-id]'); }
   function recordOf(tr) { return state.records.find(r => r.id === Number(tr.dataset.id)); }
+
+  // Live updates must never re-render a row under the user: one they are typing in,
+  // have focus in, or are listening to. Replacing the row would stop the audio.
+  function rowBusy(tr) {
+    if (tr.classList.contains('dirty') || tr.contains(document.activeElement)) return true;
+    const audio = tr.querySelector('audio');
+    return !!audio && !audio.paused;
+  }
+  function tableBusy() { return Array.from(body.querySelectorAll('tr[data-id]')).some(rowBusy); }
 
   async function saveRow(tr, extra) {
     const r = recordOf(tr);
@@ -131,9 +145,14 @@
       return r;
     } catch (e) {
       if (e.status === 409 && e.data && e.data.record) {
-        SAT.toast(e.message, 'warning');
+        // Show the newer record but keep what this user typed, so nothing is lost.
+        SAT.toast('Someone else saved this record while you were editing. Your text is kept; check the history and save again to replace theirs.', 'warning', { delay: 9000 });
         Object.assign(r, e.data.record);
         tr.outerHTML = rowHtml(r, Number(tr.dataset.index));
+        const fresh = body.querySelector('tr[data-id="' + r.id + '"]');
+        fresh.querySelector('textarea.corrected').value = text;
+        fresh.querySelector('input.notes').value = notes;
+        fresh.classList.add('dirty');
       } else {
         SAT.toast(e.message, 'danger');
       }
@@ -178,26 +197,38 @@
     if (act === 'history') showHistory(r.id);
   });
 
-  body.addEventListener('input', (e) => { const tr = rowOf(e.target); if (tr && (e.target.matches('textarea, input.notes'))) tr.classList.add('dirty'); });
+  // Claims expire after claim_timeout_seconds (Settings), so typing renews the claim
+  // every 20 seconds; a long edit is not handed to someone else halfway through.
+  async function claim(tr, input) {
+    tr.dataset.claimedAt = Date.now();
+    try {
+      await SAT.api('POST', '/api/records/' + tr.dataset.id + '/claim');
+    } catch (err) {
+      if (err.status === 409) { SAT.toast((err.data && err.data.claimed_by_name || 'Someone') + ' is editing this record right now', 'warning'); if (input) input.blur(); }
+    }
+  }
 
-  body.addEventListener('focusin', async (e) => {
+  body.addEventListener('input', (e) => {
+    const tr = rowOf(e.target);
+    if (!tr || !e.target.matches('textarea, input.notes')) return;
+    tr.classList.add('dirty');
+    if (Date.now() - Number(tr.dataset.claimedAt || 0) > 20000) claim(tr);
+  });
+
+  body.addEventListener('focusin', (e) => {
     const tr = rowOf(e.target);
     if (!tr || !e.target.matches('textarea.corrected')) return;
     body.querySelectorAll('tr.active-row').forEach(x => x.classList.remove('active-row'));
     tr.classList.add('active-row');
-    const r = recordOf(tr);
-    SAT.pollContext.record_id = r ? r.id : null;
-    try {
-      await SAT.api('POST', '/api/records/' + tr.dataset.id + '/claim');
-    } catch (err) {
-      if (err.status === 409) { SAT.toast((err.data && err.data.claimed_by_name || 'Someone') + ' is editing this record right now', 'warning'); e.target.blur(); }
-    }
+    SAT.pollContext.record_id = Number(tr.dataset.id);
+    claim(tr, e.target);
   });
 
   body.addEventListener('focusout', (e) => {
     const tr = rowOf(e.target);
     if (!tr || !e.target.matches('textarea.corrected')) return;
     if (!tr.classList.contains('dirty')) {
+      SAT.pollContext.record_id = null;
       SAT.api('POST', '/api/records/' + tr.dataset.id + '/release').catch(() => { });
     }
   });
@@ -225,10 +256,19 @@
     document.getElementById('selCount').textContent = state.selected.size;
     document.querySelectorAll('[data-bulk]').forEach(b => b.disabled = state.selected.size === 0);
   }
-  document.getElementById('selAll').addEventListener('change', (e) => {
-    state.records.forEach(r => e.target.checked ? state.selected.add(r.id) : state.selected.delete(r.id));
-    renderRecords();
-  });
+  // The header checkbox on wide screens, "Select page" in the bulk bar on small ones.
+  ['selAll', 'selPage'].forEach(id => document.getElementById(id).addEventListener('change', (e) => {
+    // Toggle in place: re-rendering would drop unsaved text and stop playing audio.
+    const on = e.target.checked;
+    document.getElementById('selAll').checked = document.getElementById('selPage').checked = on;
+    body.querySelectorAll('tr[data-id]').forEach(tr => {
+      const rid = Number(tr.dataset.id);
+      on ? state.selected.add(rid) : state.selected.delete(rid);
+      tr.classList.toggle('selected', on);
+      tr.querySelector('input.sel').checked = on;
+    });
+    updateSelection();
+  }));
   document.getElementById('bulkBar').addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-bulk]');
     if (!btn || !state.selected.size) return;
@@ -273,49 +313,47 @@
     const d = ev.detail;
     if (!d.project) return;
     renderStats(d.project);
+    // Re-render a row only when someone else starts or stops editing it.
     const claims = {};
-    (d.project.claims || []).forEach(c => claims[c.id] = c.claimed_by);
+    (d.project.claims || []).forEach(c => claims[c.id] = c);
+    const byOther = id => !!id && id !== me.id;
     state.records.forEach(r => {
+      const c = claims[r.id];
+      if (byOther(c && c.claimed_by) === byOther(r.claimed_by)) return;
       const tr = body.querySelector('tr[data-id="' + r.id + '"]');
-      if (!tr) return;
-      const other = claims[r.id] && claims[r.id] !== me.id;
-      if (other !== (r.claimed_by && r.claimed_by !== me.id)) {
-        r.claimed_by = claims[r.id] || null;
-        if (!tr.classList.contains('dirty')) tr.outerHTML = rowHtml(r, Number(tr.dataset.index));
-      }
+      if (!tr || rowBusy(tr)) return;
+      r.claimed_by = c ? c.claimed_by : null;
+      r.claimed_by_name = c ? c.claimed_by_name : null;
+      tr.outerHTML = rowHtml(r, Number(tr.dataset.index));
     });
-    const busy = (d.project.active_jobs || []).some(j => j.status === 'running');
-    const hasPending = state.records.some(r => r.status === 'pending' || r.status === 'processing');
-    const dirty = !!body.querySelector('tr.dirty');
-    // A scan or import added or removed records, or a job just finished: reload the page of rows.
+    // A scan or import added or removed records, or a job finished: reload the page of rows,
+    // but wait until nobody is typing or listening on it.
     const activeCount = (d.project.active_jobs || []).length;
-    const countChanged = state.knownRecords !== undefined && state.knownRecords !== d.project.records;
-    const jobFinished = state.knownActive !== undefined && activeCount < state.knownActive;
+    if (state.knownRecords !== undefined && (state.knownRecords !== d.project.records || activeCount < state.knownActive)) state.reloadPending = true;
     state.knownRecords = d.project.records;
     state.knownActive = activeCount;
-    if ((countChanged || jobFinished) && !dirty) { loadRecords(); return; }
-    if (busy && hasPending && Date.now() - state.lastRefresh > 4000 && !dirty) refreshVisible();
+    const due = Date.now() - state.lastRefresh > 4000;
+    if (state.reloadPending && due && !tableBusy()) { loadRecords(); return; }
+    const running = (d.project.active_jobs || []).some(j => j.status === 'running');
+    const hasPending = state.records.some(r => r.status === 'pending' || r.status === 'processing');
+    if (running && hasPending && due) refreshVisible();
   });
 
+  // Fetch the rows on screen by id and update the ones a job changed, skipping busy rows.
   async function refreshVisible() {
     state.lastRefresh = Date.now();
-    const f = filters();
-    const params = new URLSearchParams({ page: state.page, per_page: state.perPage, sort: f.sort });
-    if (f.q) params.set('q', f.q);
-    if (f.status) params.set('status', f.status);
-    if (f.review) params.set('review', f.review);
+    if (!state.records.length) return;
+    const params = new URLSearchParams({ per_page: state.records.length, ids: state.records.map(r => r.id).join(',') });
     try {
       const data = await SAT.api('GET', '/api/projects/' + pid + '/records?' + params.toString());
-      const focused = document.activeElement && rowOf(document.activeElement);
-      data.items.forEach((nr, i) => {
+      data.items.forEach(nr => {
         const old = state.records.find(r => r.id === nr.id);
         const tr = body.querySelector('tr[data-id="' + nr.id + '"]');
-        if (old && tr && (old.status !== nr.status || old.version !== nr.version) && !(focused && focused === tr)) {
+        if (old && tr && (old.status !== nr.status || old.version !== nr.version) && !rowBusy(tr)) {
           Object.assign(old, nr);
           tr.outerHTML = rowHtml(old, Number(tr.dataset.index));
         }
       });
-      state.total = data.total;
     } catch (e) { }
   }
 

@@ -118,9 +118,17 @@
   // Status polling -----------------------------------------------------------
   let lastNotifId = null;
   let pollTimer = null;
+  let polling = false, pollAgain = false;
   SAT.pollContext = {};
 
+  // One poll at a time. A pollNow() during a request asks for another one right after
+  // it instead of starting a second timer chain. Hidden tabs only poll every 30s,
+  // often enough to stay listed as online.
   async function poll() {
+    clearTimeout(pollTimer);
+    if (polling) { pollAgain = true; return; }
+    polling = true;
+    let secs = 5;
     try {
       const params = new URLSearchParams({ page: document.body.dataset.page || '' });
       const pid = SAT.pollContext.project_id || document.body.dataset.projectId;
@@ -130,11 +138,13 @@
       if (!data) return;
       renderStatus(data);
       window.dispatchEvent(new CustomEvent('sat:status', { detail: data }));
-      const secs = Math.max(1, Number(data.poll_seconds) || 2);
-      pollTimer = setTimeout(poll, secs * 1000);
+      secs = document.hidden ? 30 : Math.max(1, Number(data.poll_seconds) || 2);
     } catch (e) {
-      pollTimer = setTimeout(poll, 5000);
+    } finally {
+      polling = false;
     }
+    pollTimer = setTimeout(poll, pollAgain ? 0 : secs * 1000);
+    pollAgain = false;
   }
 
   function renderStatus(data) {
@@ -184,10 +194,13 @@
     if (lm) lm.textContent = data.loaded_model ? ('In memory: ' + data.loaded_model.model + ' (' + data.loaded_model.device + ')') : '';
   }
 
-  SAT.pollNow = function () { clearTimeout(pollTimer); poll(); };
+  SAT.pollNow = poll;
 
   document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('topnav')) poll();
+    if (document.getElementById('topnav')) {
+      poll();
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+    }
     const readAll = document.getElementById('notifReadAll');
     if (readAll) readAll.addEventListener('click', async () => { await SAT.api('POST', '/api/notifications/read', {}); SAT.pollNow(); });
     const list = document.getElementById('notifList');

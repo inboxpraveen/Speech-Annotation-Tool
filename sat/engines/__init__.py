@@ -335,7 +335,7 @@ def get(engine_id):
 
 def catalog_with_status():
     """Catalog plus install / key state for the UI."""
-    caps = local_engines.capabilities()
+    caps = local_engines.installed()
     out = []
     for e in CATALOG:
         item = dict(e)

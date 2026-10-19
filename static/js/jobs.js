@@ -1,6 +1,6 @@
 /* Jobs page: list, controls and live logs. */
 (function () {
-  const st = { page: 1, logJob: null, logAfter: 0, logTimer: null };
+  const st = { page: 1, logJob: null, logAfter: 0, logTimer: null, html: '', active: 0 };
   const body = document.getElementById('jBody');
 
   function row(j) {
@@ -26,7 +26,9 @@
     if (f) params.set('status', f);
     try {
       const data = await SAT.api('GET', '/api/jobs?' + params.toString());
-      body.innerHTML = data.items.length ? data.items.map(row).join('') : '<tr><td colspan="8" class="text-secondary">No jobs</td></tr>';
+      // Leave the table alone when nothing changed, so a click on a button is not lost.
+      const html = data.items.length ? data.items.map(row).join('') : '<tr><td colspan="8" class="text-secondary">No jobs</td></tr>';
+      if (html !== st.html) body.innerHTML = st.html = html;
       document.getElementById('jInfo').textContent = data.total + ' jobs';
       document.getElementById('jPrev').disabled = st.page <= 1;
       document.getElementById('jNext').disabled = st.page * 30 >= data.total;
@@ -82,6 +84,11 @@
     if (!(await SAT.confirm('Remove all finished jobs from the list?', 'Clear'))) return;
     try { await SAT.api('POST', '/api/jobs/clear'); load(); } catch (e) { SAT.toast(e.message, 'danger'); }
   });
-  window.addEventListener('sat:status', (ev) => { if ((ev.detail.jobs || []).some(j => j.status === 'running') || document.getElementById('jFilter').value.includes('running')) load(); });
+  window.addEventListener('sat:status', (ev) => {
+    const jobs = ev.detail.jobs || [];
+    const finished = jobs.length < st.active;
+    st.active = jobs.length;
+    if (finished || jobs.some(j => j.status === 'running') || document.getElementById('jFilter').value.includes('running')) load();
+  });
   load();
 })();

@@ -3,6 +3,7 @@
   const engines = window.ENGINES || [];
   const grid = document.getElementById('projectGrid');
   let projects = [];
+  let lastLoad = 0, knownActive = 0;
 
   function card(p) {
     const s = p.stats;
@@ -37,6 +38,7 @@
   }
 
   async function load() {
+    lastLoad = Date.now();
     try {
       const data = await SAT.api('GET', '/api/projects');
       projects = data.items;
@@ -66,7 +68,11 @@
     const jobs = document.getElementById('activeJobs');
     jobs.innerHTML = (d.jobs || []).length ? d.jobs.map(j => '<li class="list-group-item"><div class="d-flex justify-content-between small"><strong class="truncate">' + SAT.esc(j.title) + '</strong>' + SAT.statusBadge(j.status) + '</div>' + SAT.jobProgress(j) + '<div class="small text-secondary mt-1">' + SAT.esc(j.message || '') + '</div></li>').join('')
       : '<li class="list-group-item text-secondary small">No active jobs</li>';
-    if (d.jobs && d.jobs.some(j => j.status === 'running')) load();
+    // Project cards change while a project job runs (every 5s at most) and once more when one ends.
+    const projectJobs = (d.jobs || []).filter(j => j.project_id);
+    const finished = projectJobs.length < knownActive;
+    knownActive = projectJobs.length;
+    if (finished || (projectJobs.some(j => j.status === 'running') && Date.now() - lastLoad > 5000)) load();
   });
 
   // New project dialog ------------------------------------------------------------

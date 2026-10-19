@@ -1,5 +1,6 @@
 import json
 import threading
+import time
 
 from sat import audio, db, scanner
 from sat.jobs import JobContext, _claim_next, runner
@@ -171,3 +172,48 @@ def test_engine_catalog_and_provider_settings(client):
     assert dg["has_key"] and dg["key_preview"].endswith("c123")
     r = client.post("/api/engines/sarvam/test", json={})
     assert r.get_json()["ok"] is False and "API key" in r.get_json()["error"]
+
+
+def test_status_does_not_wait_for_a_busy_model(client, audio_dir):
+    # A model load or transcription holds the engine lock; the status poll must not queue behind it.
+    from sat.engines import local
+
+    r = client.post("/api/projects", json={"name": "s", "root_path": str(audio_dir), "chunk_mode": "none"})
+    pid = r.get_json()["id"]
+    scanner.scan_project(db.query_one("SELECT * FROM projects WHERE id=?", (pid,)))
+    rec = client.get("/api/projects/%d/records" % pid).get_json()["items"][0]
+    client.post("/api/records/%d/claim" % rec["id"])
+    held, release = threading.Event(), threading.Event()
+
+    def hold():
+        with local._lock:
+            held.set()
+            release.wait(10)
+
+    t = threading.Thread(target=hold)
+    t.start()
+    held.wait(5)
+    try:
+        result = {}
+        poll = threading.Thread(target=lambda: result.update(r=client.get("/api/status?project_id=%d" % pid)))
+        poll.start()
+        poll.join(3)
+        assert not poll.is_alive(), "status waited for the engine lock"
+        claims = result["r"].get_json()["project"]["claims"]
+        assert claims == [{"id": rec["id"], "claimed_by": 1, "claimed_by_name": "Admin"}]
+        started = time.time()
+        local.unload_if_idle()  # returns at once instead of blocking the scheduler
+        assert time.time() - started < 1
+    finally:
+        release.set()
+        t.join()
+
+
+def test_records_by_ids(client, audio_dir):
+    r = client.post("/api/projects", json={"name": "ids", "root_path": str(audio_dir), "chunk_mode": "none"})
+    pid = r.get_json()["id"]
+    scanner.scan_project(db.query_one("SELECT * FROM projects WHERE id=?", (pid,)))
+    ids = [x["id"] for x in client.get("/api/projects/%d/records" % pid).get_json()["items"]]
+    data = client.get("/api/projects/%d/records?ids=%d,%d" % (pid, ids[0], ids[2])).get_json()
+    assert data["total"] == 2 and sorted(x["id"] for x in data["items"]) == sorted([ids[0], ids[2]])
+    assert client.get("/api/projects/%d/records?q=two" % pid).get_json()["total"] == 1

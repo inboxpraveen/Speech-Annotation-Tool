@@ -71,7 +71,9 @@ def status():
     if project_id:
         out["project"] = project_stats(project_id)
         out["project"]["claims"] = db.query(
-            "SELECT id, claimed_by FROM records WHERE project_id=? AND claimed_by IS NOT NULL", (project_id,)
+            "SELECT r.id, r.claimed_by, u.display_name AS claimed_by_name FROM records r LEFT JOIN users u ON u.id=r.claimed_by "
+            "WHERE r.project_id=? AND r.claimed_by IS NOT NULL",
+            (project_id,),
         )
     return jsonify(out)
 
@@ -603,6 +605,11 @@ def list_records(project_id):
     if request.args.get("file_id", type=int):
         where.append("r.file_id=?")
         args.append(request.args.get("file_id", type=int))
+    # The page refreshes rows it already shows by id, which skips the sort over the whole project.
+    ids = [int(i) for i in (request.args.get("ids") or "").split(",") if i.strip().isdigit()][:500]
+    if ids:
+        where.append("r.id IN (%s)" % ",".join("?" for _ in ids))
+        args += ids
     q = (request.args.get("q") or "").strip()
     if q:
         where.append("(r.text LIKE ? OR r.corrected_text LIKE ? OR f.rel_path LIKE ? OR r.notes LIKE ?)")
@@ -614,7 +621,9 @@ def list_records(project_id):
     sort = request.args.get("sort") or "path"
     order = {"path": "f.rel_path, r.segment_index", "updated": "r.updated_at DESC", "id": "r.id", "duration": "r.duration DESC"}.get(sort, "f.rel_path, r.segment_index")
     sql_where = " AND ".join(where)
-    total = db.scalar("SELECT COUNT(*) FROM records r JOIN files f ON f.id=r.file_id WHERE " + sql_where, args)
+    # Only a search needs the files table; counting without the join is much faster on big projects.
+    count_from = "records r JOIN files f ON f.id=r.file_id" if q else "records r"
+    total = db.scalar("SELECT COUNT(*) FROM %s WHERE %s" % (count_from, sql_where), args)
     rows = db.query(RECORD_SQL + "WHERE %s ORDER BY %s LIMIT ? OFFSET ?" % (sql_where, order), args + [per_page, (page - 1) * per_page])
     return jsonify({"items": rows, "total": total, "page": page, "per_page": per_page})
 

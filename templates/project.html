@@ -5,7 +5,7 @@
   <div>
     <div class="small"><a href="/" class="text-decoration-none">Projects</a> / <span id="hName">{{ project.name }}</span></div>
     <h4 class="mb-1" id="hTitle">{{ project.name }}</h4>
-    <div class="small text-secondary font-monospace" id="hRoot">{{ project.root_path }}</div>
+    <div class="small text-secondary font-monospace text-break" id="hRoot">{{ project.root_path }}</div>
     <div class="small text-secondary mt-1" id="hEngine"></div>
   </div>
   <div class="d-flex flex-wrap gap-2">
@@ -28,9 +28,9 @@
 
 <div class="card mb-3">
   <div class="card-body py-2">
-    <div class="d-flex flex-wrap align-items-center gap-4" id="statsRow"></div>
+    <div class="d-flex flex-wrap align-items-center gap-3 gap-md-4" id="statsRow"></div>
     <div id="jobPanel" class="mt-2 d-none">
-      <div class="d-flex align-items-center gap-2 small">
+      <div class="d-flex flex-wrap align-items-center gap-2 small">
         <span class="spinner-border spinner-border-sm text-primary" id="jobSpinner"></span>
         <strong id="jobTitle"></strong><span id="jobMessage" class="text-secondary"></span>
         <span class="ms-auto d-flex gap-1">
@@ -47,7 +47,7 @@
 <div class="card">
   <div class="card-body">
     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-      <input type="search" class="form-control form-control-sm" style="width: 240px" id="fQuery" placeholder="Search text or file path">
+      <input type="search" class="form-control form-control-sm" style="width: 240px; max-width: 100%" id="fQuery" placeholder="Search text or file path">
       <select class="form-select form-select-sm w-auto" id="fStatus">
         <option value="">All statuses</option>
         <option value="pending">Pending</option>
@@ -79,8 +79,9 @@
       <span class="ms-auto small text-secondary" id="pageInfo"></span>
     </div>
     <div class="d-flex flex-wrap align-items-center gap-2 mb-2" id="bulkBar">
+      <div class="form-check form-check-inline small d-lg-none me-0"><input class="form-check-input" type="checkbox" id="selPage"><label class="form-check-label" for="selPage">Select page</label></div>
       <span class="small text-secondary"><span id="selCount">0</span> selected</span>
-      <div class="btn-group btn-group-sm">
+      <div class="btn-group btn-group-sm flex-wrap">
         <button class="btn btn-outline-success" data-bulk="approve" disabled>Approve</button>
         <button class="btn btn-outline-danger" data-bulk="reject" disabled>Reject</button>
         <button class="btn btn-outline-secondary" data-bulk="reset_review" disabled>Clear review</button>
@@ -88,7 +89,7 @@
         <button class="btn btn-outline-secondary" data-bulk="skip" disabled>Skip</button>
         <button class="btn btn-outline-danger" data-bulk="delete" disabled>Delete</button>
       </div>
-      <span class="ms-auto small text-secondary">Shortcuts: <span class="kbd">Ctrl+Enter</span> save and next, <span class="kbd">Ctrl+Space</span> play/pause, <span class="kbd">Alt+↑/↓</span> move, <span class="kbd">Alt+A</span> approve and next</span>
+      <span class="ms-auto small text-secondary d-none d-lg-inline">Shortcuts: <span class="kbd">Ctrl+Enter</span> save and next, <span class="kbd">Ctrl+Space</span> play/pause, <span class="kbd">Alt+↑/↓</span> move, <span class="kbd">Alt+A</span> approve and next</span>
     </div>
     <div class="table-responsive">
       <table class="table table-sm records-table align-top mb-2">
@@ -226,13 +227,13 @@
     <div class="modal-content">
       <div class="modal-header"><h5 class="modal-title">Files</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
-        <div class="d-flex gap-2 mb-2">
-          <input type="search" class="form-control form-control-sm" style="width: 260px" id="flQuery" placeholder="Filter by path">
+        <div class="d-flex flex-wrap gap-2 mb-2">
+          <input type="search" class="form-control form-control-sm" style="width: 260px; max-width: 100%" id="flQuery" placeholder="Filter by path">
           <select class="form-select form-select-sm w-auto" id="flStatus"><option value="">All</option><option value="ready">Ready</option><option value="new">New</option><option value="changed">Changed</option><option value="missing">Missing</option><option value="error">Error</option></select>
           <button class="btn btn-sm btn-outline-warning" id="flReprepare" title="Rebuild records for files whose audio changed on disk">Re-prepare changed files</button>
           <span class="ms-auto small text-secondary" id="flInfo"></span>
         </div>
-        <table class="table table-sm small"><thead class="table-light"><tr><th>Path</th><th>Status</th><th>Duration</th><th>Size</th><th>Records</th><th></th></tr></thead><tbody id="flBody"></tbody></table>
+        <div class="table-responsive"><table class="table table-sm small"><thead class="table-light"><tr><th>Path</th><th>Status</th><th>Duration</th><th>Size</th><th>Records</th><th></th></tr></thead><tbody id="flBody"></tbody></table></div>
         <div class="d-flex justify-content-between"><button class="btn btn-sm btn-outline-secondary" id="flPrev">Previous</button><button class="btn btn-sm btn-outline-secondary" id="flNext">Next</button></div>
       </div>
     </div>

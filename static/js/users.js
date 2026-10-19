@@ -2,6 +2,7 @@
 (function () {
   const body = document.getElementById('uBody');
   let users = [];
+  let html = '';
 
   function row(u) {
     const a = u.activity;
@@ -14,7 +15,12 @@
   }
 
   async function load() {
-    try { users = (await SAT.api('GET', '/api/users')).items; body.innerHTML = users.map(row).join(''); } catch (e) { SAT.toast(e.message, 'danger'); }
+    try {
+      users = (await SAT.api('GET', '/api/users')).items;
+      // This runs on every status poll; only touch the table when something changed.
+      const next = users.map(row).join('');
+      if (next !== html) body.innerHTML = html = next;
+    } catch (e) { SAT.toast(e.message, 'danger'); }
   }
 
   function openModal(u) {
