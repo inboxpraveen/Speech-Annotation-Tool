@@ -27,6 +27,8 @@ PORT = int(_env("PORT", "8000"))
 ADMIN_USERNAME = _env("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = _env("ADMIN_PASSWORD", "admin")
 LOG_LEVEL = _env("LOG_LEVEL", "INFO").upper()
+# Mark the login cookie Secure. Turn on when the app is served over HTTPS (for example behind a reverse proxy).
+COOKIE_SECURE = (_env("COOKIE_SECURE", "") or "").lower() in ("1", "true", "yes", "on")
 # Extra folders the in-app folder browser should offer as starting points
 # (comma separated). Docker uses this to expose the mounted /audio folder.
 AUDIO_ROOTS = [p for p in (_env("AUDIO_ROOTS", "") or "").split(",") if p.strip()]

@@ -24,7 +24,7 @@ Two ways to run the tool: a Conda environment on the machine itself, or Docker. 
 
 4. Open http://localhost:8000. The first admin account is `admin` / `admin` unless you changed it in `.env`.
 
-Other people on your network reach the app at `http://<your ip>:8000`. Keep this on a trusted network; there is no TLS and no rate limiting.
+Other people on your network reach the app at `http://<your ip>:8000`. The app serves plain HTTP and has no login rate limiting, so keep it on a trusted network or read [Running it for a team](#running-it-for-a-team) first.
 
 To update later: `git pull`, then `conda env update -f environment.yml --prune`.
 
@@ -87,6 +87,58 @@ That one package brings the CUDA libraries that both transformers and faster-whi
 
 The app checks that the CUDA maths libraries can actually be loaded before it uses a GPU. When they cannot, or a GPU call fails mid-job, it switches that engine to the CPU and carries on. Force the CPU at any time under Settings > Local device.
 
+## Running it for a team
+
+The app is built for a team on a trusted network. Before you share it:
+
+1. **Change the admin password.** The first account is `admin` / `admin`. Set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in `.env` before the first start, or change the password from the user menu. The app logs a warning at every start while the default is still in use.
+2. **Put HTTPS in front of it.** The app itself serves plain HTTP. Listen on the local machine only (`HOST=127.0.0.1`, or with Docker change the `ports` line in `docker-compose.yml` to `127.0.0.1:8000:8000`), let a reverse proxy terminate TLS, and set `COOKIE_SECURE=true` so the login cookie is only sent over HTTPS. With Caddy:
+
+   ```
+   annotate.example.com {
+       reverse_proxy 127.0.0.1:8000
+   }
+   ```
+
+   With nginx, allow large uploads and long requests:
+
+   ```
+   location / {
+       proxy_pass http://127.0.0.1:8000;
+       proxy_set_header Host $host;
+       client_max_body_size 2g;
+       proxy_read_timeout 600s;
+   }
+   ```
+
+   There is no login rate limiting in the app. If it is reachable from outside your network, add a limit at the proxy.
+3. **Know who can see what.** Every signed-in user can browse the folders the server account can read and can create projects on them. In Docker the host files it can reach are limited to the folders you mount. Provider API keys and the Hugging Face token are stored as plain text in `data/app.db`, so keep `data/` readable only by the account that runs the app.
+4. **Back up the database.** This copies `data/app.db` safely while the app is running:
+
+   ```bash
+   python -c "import sqlite3; s = sqlite3.connect('data/app.db'); d = sqlite3.connect('app-backup.db'); s.backup(d)"
+   ```
+
+   Back up `data/segments` too if you cut long recordings into chunks. Models can be downloaded again.
+5. **Keep it running.** The compose file already uses `restart: unless-stopped`. Without Docker, run `python app.py` from a service manager. A systemd unit on Linux (adjust the paths and user):
+
+   ```
+   [Unit]
+   Description=Speech Annotation Tool
+   After=network.target
+
+   [Service]
+   User=annotate
+   WorkingDirectory=/opt/Speech-Annotation-Tool
+   ExecStart=/opt/conda/envs/speech-annotation-tool/bin/python app.py
+   Restart=on-failure
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+The process is a single Python server with one SQLite database. That is deliberate: there is nothing else to run, monitor or patch. If you need several servers behind a load balancer, this tool is not the right fit.
+
 ## Environment variables
 
 Only the basics live in `.env` (or real environment variables). Everything else is edited inside the app under Settings, Providers and Models.
@@ -99,6 +151,7 @@ Only the basics live in `.env` (or real environment variables). Everything else 
 | `ADMIN_USERNAME` | `admin` | First admin account, created on the very first start only. |
 | `ADMIN_PASSWORD` | `admin` | Password for that account. Change it in the app afterwards. |
 | `SECRET_KEY` | generated | Cookie signing key. |
+| `COOKIE_SECURE` | off | Set to `true` when the app is served over HTTPS, so the login cookie is never sent over plain HTTP. |
 | `AUDIO_ROOTS` | empty | Extra folders the folder browser offers first, comma separated. Docker sets this to `/audio`. |
 | `LOG_LEVEL` | `INFO` | Log verbosity for `data/logs/app.log`. |
 

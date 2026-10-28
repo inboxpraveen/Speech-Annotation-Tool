@@ -1,5 +1,9 @@
 # Development
 
+## Architecture
+
+![Architecture: pipeline, one Python process, and what is stored on disk](images/architecture.svg)
+
 ## Layout
 
 ```

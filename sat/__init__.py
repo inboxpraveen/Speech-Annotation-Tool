@@ -6,7 +6,7 @@ import sys
 from flask import Flask, jsonify, request
 
 from sat import auth, db
-from sat.config import BASE_DIR, LOG_DIR, LOG_LEVEL, SECRET_KEY
+from sat.config import BASE_DIR, COOKIE_SECURE, LOG_DIR, LOG_LEVEL, SECRET_KEY
 
 VERSION = "3.0.0"
 
@@ -37,11 +37,13 @@ def create_app(start_jobs=True):
     app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = COOKIE_SECURE
     app.config["PERMANENT_SESSION_LIFETIME"] = 60 * 60 * 24 * 30
     app.jinja_env.globals["app_version"] = VERSION
 
     db.init_db()
     auth.bootstrap_admin()
+    auth.warn_default_admin()
 
     from sat.routes.api import bp as api_bp
     from sat.routes.pages import bp as pages_bp

@@ -5,6 +5,7 @@ ADMIN_USERNAME / ADMIN_PASSWORD in the environment. Presence is kept in
 memory: every client pings /api/status a couple of times a minute and tells
 us which page, project and record it is on.
 """
+import logging
 import threading
 import time
 from functools import wraps
@@ -16,6 +17,9 @@ from sat import db
 from sat.config import ADMIN_PASSWORD, ADMIN_USERNAME
 
 ONLINE_SECONDS = 45
+DEFAULT_ADMIN_PASSWORD = "admin"
+
+log = logging.getLogger("sat")
 
 _presence = {}
 _presence_lock = threading.Lock()
@@ -38,6 +42,13 @@ def public_user(row):
 def bootstrap_admin():
     if db.scalar("SELECT COUNT(*) FROM users") == 0:
         create_user(ADMIN_USERNAME, ADMIN_PASSWORD, role="admin", display_name="Admin")
+
+
+def warn_default_admin():
+    """Log a warning while the first admin still has the shipped default password."""
+    row = db.query_one("SELECT password_hash FROM users WHERE username=? AND role='admin'", (ADMIN_USERNAME,))
+    if row and check_password_hash(row["password_hash"], DEFAULT_ADMIN_PASSWORD):
+        log.warning("The %s account still uses the default password. Change it from the user menu before sharing this server.", ADMIN_USERNAME)
 
 
 def create_user(username, password, role="member", display_name=""):

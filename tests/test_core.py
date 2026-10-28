@@ -217,3 +217,11 @@ def test_records_by_ids(client, audio_dir):
     data = client.get("/api/projects/%d/records?ids=%d,%d" % (pid, ids[0], ids[2])).get_json()
     assert data["total"] == 2 and sorted(x["id"] for x in data["items"]) == sorted([ids[0], ids[2]])
     assert client.get("/api/projects/%d/records?q=two" % pid).get_json()["total"] == 1
+
+
+def test_default_admin_password_warning(app, caplog):
+    from sat import auth
+
+    with caplog.at_level("WARNING", logger="sat"):
+        auth.warn_default_admin()
+    assert "default password" in caplog.text

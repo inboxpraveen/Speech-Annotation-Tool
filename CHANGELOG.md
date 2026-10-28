@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+Added
+
+- A warning in the log at every start while the first admin still uses the default password.
+- `COOKIE_SECURE` setting to mark the login cookie Secure when the app is served over HTTPS.
+- "Running it for a team" in the setup guide: admin password, HTTPS behind a reverse proxy, access to folders, backups, running as a service.
+- `SECURITY.md`, a logo, a README banner, a social preview image and an architecture diagram.
+
 Fixed
 
 - The review page no longer redraws rows on every status refresh. Audio kept stopping and the text box lost focus every two seconds. Rows a user is typing in, focused on or listening to are never redrawn; reloads after a scan or a finished job wait until the user is idle.
